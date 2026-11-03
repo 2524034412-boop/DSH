@@ -146,6 +146,13 @@ overReq.headers.range = 'bytes=999999999-'
 byPath['/dsh-star-boot/asset'].handler(overReq, overRes)
 check('越界 Range 返回 416', overRes.box.status === 416, String(overRes.box.status))
 
+// 写法看不懂的 Range 不能回 416：一些播放器会就此判死，整份给它才有救。
+const oddRes = fakeResponse()
+const oddReq = fakeRequest('GET', '/dsh-star-boot/asset')
+oddReq.headers.range = 'bytes=abc-def'
+byPath['/dsh-star-boot/asset'].handler(oddReq, oddRes)
+check('畸形 Range 退回整份 200', oddRes.box.status === 200, String(oddRes.box.status))
+
 const configRes = fakeResponse()
 byPath['/dsh-star-boot/config'].handler(fakeRequest('GET', '/dsh-star-boot/config'), configRes)
 const config = JSON.parse(configRes.box.body)
