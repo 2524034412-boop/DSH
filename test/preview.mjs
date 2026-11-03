@@ -31,6 +31,7 @@ const root = resolve(here, '..')
 const scheme = process.env.STAR_BOOT_SCHEME ?? 'star'
 const pace = process.env.STAR_BOOT_PACE ?? 'normal'
 const press = process.env.STAR_BOOT_PRESS ?? ''
+const reduced = process.env.STAR_BOOT_REDUCED === '1'
 /** 任意额外设置：JSON，键是 localStorage 键（不带前缀也行）。 */
 const extra = process.env.STAR_BOOT_STORE ? JSON.parse(process.env.STAR_BOOT_STORE) : {}
 const suffix = [scheme, pace, process.env.STAR_BOOT_NO_CARD === '1' ? 'nocard' : '', press, process.env.STAR_BOOT_TAG ?? '']
@@ -214,7 +215,29 @@ page.on('response', (response) => {
   if (response.status() >= 400) errors.push(`http ${String(response.status())} ${response.url()}`)
 })
 
+if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' })
 await page.goto(`http://127.0.0.1:${String(port)}/`, { waitUntil: 'load' })
+
+// 「减少动画」是最容易被忽略的路径：系统一开，片头会被压成静态一闪。
+// 这里真的把媒体特性模拟出来，用两个时间点判定：1.4 秒时必须在，4 秒后必须走。
+if (reduced) {
+  const present = () => page.evaluate(() => document.querySelector('.star-splash-host') !== null)
+  await page.waitForTimeout(1400)
+  const early = await present()
+  console.log('reduced: +1.4s 还在吗 ->', early)
+  await page.waitForTimeout(2600)
+  const late = await present()
+  console.log('reduced: +4.0s 已退场吗 ->', late === false)
+  if (early !== true) {
+    console.log('FAIL: 减少动画时片头 1.4 秒内就没了（应该至少 1.5 秒）')
+    process.exitCode = 1
+  } else if (late !== false) {
+    console.log('FAIL: 减少动画时片头 4 秒了还没退场')
+    process.exitCode = 1
+  } else {
+    console.log('ok: 减少动画时片头停够 2 秒后再退场')
+  }
+}
 
 const shot = async (label) => {
   await page.screenshot({ path: join(outDir, `frame-${label}.png`) })
