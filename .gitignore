@@ -1,0 +1,17 @@
+# 依赖与临时文件
+node_modules/
+*.bak
+*.bak-*
+*.log
+
+# 测试产物
+.dsh-tmp/
+test/out/
+
+# 系统
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 个人设置别提交
+star-boot.json

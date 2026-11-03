@@ -1,0 +1,11 @@
+# 跨平台换行统一：代码用 LF，Windows 脚本保留 CRLF
+* text=auto eol=lf
+
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+*.mp4 binary
+*.webp binary
+*.png binary
+*.ico binary
