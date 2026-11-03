@@ -73,6 +73,12 @@ if (Test-Path $target) {
   Remove-Item $target -Recurse -Force
 }
 Copy-Item $source $target -Recurse -Force
+# 从 git 仓库直接装时会把 .git 一起带过来（几十 MB 的历史，插件用不上）。
+$gitDir = Join-Path $target '.git'
+if (Test-Path $gitDir) {
+  Remove-Item $gitDir -Recurse -Force -ErrorAction SilentlyContinue
+  Say '已跳过 .git（插件目录不需要仓库历史）'
+}
 Say "插件已就绪  $target"
 
 # 6) node_modules 链接（pnpm 的 link: 依赖在缺少 pnpm 时不会自己建）
