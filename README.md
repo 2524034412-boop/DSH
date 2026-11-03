@@ -133,6 +133,23 @@ $node = "D:\DSH\resources\runtime\node\node.exe"   # 或任意 Node ≥ 20
 
 见 [NOTICE-assets.md](NOTICE-assets.md)。**随包的 `assets/default-bg.mp4` 只是演示素材**，如果你要公开分发，请确认它的授权，或者直接删掉这个文件——删掉之后会自动退回 `assets/hero.webp`。
 
+## 常见问题
+
+**装完重启，没看到片头？**
+先确认是真重启（进程列表里没有 `DeepSeek Harness` 再打开），刷新页面不够——宿主那一半只在启动时加载。再看 profile 的 `package.json` 里 `dsh.profile.bundles` 有没有 `dsh-star-boot`；没有就重跑一次 `安装.cmd`。
+
+**片头一闪而过，或者干脆没有？**
+设置 → 星图开机 → 模式是不是「关闭」；地址栏后加过 `?star=0` 的话这一次也会跳过。
+
+**背景视频不播 / 卡住？**
+宿主需要支持 `Range`（1.4.2 起已实现）。老版本或自己改过的宿主，mp4 的 `moov` 在文件尾部时可能起播不了。也可以先把「素材跟播」关掉试一次——关掉后片头固定按自己的节奏走。
+
+**改了素材/颜色，但没变化？**
+素材和外观都是浏览器那一半，刷新页面即可；只有宿主代码（`lib/index.js`）改动需要重启 DSH。
+
+**想彻底关掉？**
+设置 → 星图开机 → 模式选「关闭」，或者跑 `卸载.cmd` 把加载声明去掉。
+
 ## License
 
 MIT，见 [LICENSE](LICENSE)。
