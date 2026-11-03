@@ -131,7 +131,7 @@ $node = "D:\DSH\resources\runtime\node\node.exe"   # 或任意 Node ≥ 20
 
 ## 素材授权
 
-见 [NOTICE-assets.md](NOTICE-assets.md)。**随包的 `assets/default-bg.mp4` 只是演示素材**，如果你要公开分发，请确认它的授权，或者直接删掉这个文件——删掉之后会自动退回 `assets/hero.webp`。
+见 [NOTICE-assets.md](NOTICE-assets.md)。**代码是 MIT，素材不跟着 MIT 走**：随包的 `assets/default-bg.mp4` 和 `assets/hero.webp` 是作者自己的素材，随本仓库分发。你要拿去用请注明出处，或者直接换成自己的——删掉视频会自动退回 `assets/hero.webp`。
 
 ## 常见问题
 

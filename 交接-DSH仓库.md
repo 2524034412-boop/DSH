@@ -120,7 +120,7 @@ Playwright 装在 DSH profile 的 `node_modules` 下（`~/.dsh/profiles/desktop/
 - 「素材跟播」最多等 15 秒，更长的片子会被切
 - 音效可能被浏览器/Electron 自动播放策略拦掉，此时静音且不报错
 - 视频依赖宿主支持 `Range`（1.4.2 起）
-- `assets/default-bg.mp4` 是演示素材，**版权不在 MIT 范围**；公开分发前确认授权，或删掉它（会自动退回 `hero.webp`）
+- `assets/default-bg.mp4` 是**作者自有素材**（已发布在 B 站），随仓库分发但**不在 MIT 范围内**；别人拿去用要注明出处，删掉它会自动退回 `hero.webp`
 
 ## 和用户打交道的方式
 
