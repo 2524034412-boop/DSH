@@ -157,6 +157,7 @@ for (const item of captured) {
     check(`${label} 有滑杆`, sliders >= 3, String(sliders))
     check(`${label} 文案齐全`, ['名字', '眉标', '立体字', '音效'].every((word) => text.includes(word)))
     check(`${label} 有导入按钮`, text.includes('选择文件'))
+    check(`${label} 有更新入口`, text.includes('检查更新') && text.includes('版本'))
   } else {
     // 「通用」里那一行只放模式 + 素材 + 预览，不重复整套控件。
     check(`${label} 有模式开关`, ['关闭', '简洁', '状态卡'].every((word) => text.includes(word)))

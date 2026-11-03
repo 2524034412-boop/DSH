@@ -28,7 +28,8 @@ const check = (label, condition, detail) => {
 }
 
 const root = resolve(new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))
-const VIDEO = process.env.STAR_BOOT_VIDEO ?? 'C:/Users/25240/.dsh/star-boot-assets/mw02weua-TapNow_1793672667107_Video_1.mp4'
+// 用仓库里随包的视频当素材，不再依赖用户 star-boot-assets 里那份（那边会被换掉）。
+const VIDEO = process.env.STAR_BOOT_VIDEO ?? join(root, 'assets', 'default-bg.mp4')
 
 /** 第一轮给图片，第二轮换成视频——地址不变，只有客户端加的参数会变。 */
 let mode = 'image'

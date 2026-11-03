@@ -12,7 +12,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { apply, firstFrame } from '../lib/index.js'
+import { apply, firstFrame, isNewerVersion } from '../lib/index.js'
 
 /** 上传测试会真的写文件，所以把 DSH_HOME 指到一个临时目录，别碰本机配置。 */
 const sandbox = mkdtempSync(join(tmpdir(), 'star-boot-test-'))
@@ -68,7 +68,7 @@ check('第一帧导出与注入一致', firstFrame.css === rows.find((row) => ro
 /* ---------- 2. 路由 ---------- */
 
 console.log('routes')
-check('注册了 5 条', routes.length === 5, String(routes.length))
+check('注册了 6 条', routes.length === 6, String(routes.length))
 check('都是 exact', routes.every((route) => route.kind === 'exact'))
 const byPath = Object.fromEntries(routes.map((route) => [route.path, route]))
 
@@ -233,6 +233,58 @@ check('音效槽变为可用', audioUp.payload.slots.audio.usable === true)
 
 process.env.DSH_HOME = realHome
 rmSync(sandbox, { recursive: true, force: true })
+
+/* ---------- 4. 检查更新（不联网：把 fetch 换掉） ---------- */
+
+console.log('update')
+check('1.7.10 比 1.7.2 新', isNewerVersion('1.7.10', '1.7.2') === true)
+check('1.8.0 比 1.7.9 新', isNewerVersion('1.8.0', '1.7.9') === true)
+check('同版本不算新', isNewerVersion('1.7.2', '1.7.2') === false)
+check('旧版本不算新', isNewerVersion('1.7.1', '1.7.2') === false)
+
+const realFetch = globalThis.fetch
+const stubRelease = (tag, withAsset = true) => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      tag_name: tag,
+      body: '测试用发布说明',
+      published_at: '2026-11-03T00:00:00Z',
+      assets: withAsset ? [{ name: 'dsh-star-boot.zip', size: 1024, browser_download_url: 'https://example.invalid/a.zip' }] : [],
+    }),
+  })
+}
+const updateRoute = byPath['/dsh-star-boot/update']
+
+stubRelease('v9.9.9')
+const checkRes = fakeResponse()
+await updateRoute.handler(fakeRequest('GET', '/dsh-star-boot/update'), checkRes)
+const checkBody = JSON.parse(checkRes.box.body)
+check('检查更新返回 ok', checkBody.ok === true)
+check('检查更新认出新版本', checkBody.newer === true && checkBody.latest === '9.9.9', JSON.stringify(checkBody.latest))
+check('检查更新带回了说明', String(checkBody.notes).length > 0)
+
+// 版本已经是最新时，POST 不应去下载
+const currentTag = 'v' + String(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version)
+stubRelease(currentTag)
+const latestRes = fakeResponse()
+await updateRoute.handler(
+  { method: 'POST', url: '/dsh-star-boot/update', headers: {}, async *[Symbol.asyncIterator]() {} },
+  latestRes,
+)
+const latestBody = JSON.parse(latestRes.box.body)
+check('已是最新时不下载', latestBody.alreadyLatest === true, JSON.stringify(latestBody))
+
+// 新版但没有 zip 附件 → 拒绝
+stubRelease('v9.9.9', false)
+const noAssetRes = fakeResponse()
+await updateRoute.handler(
+  { method: 'POST', url: '/dsh-star-boot/update', headers: {}, async *[Symbol.asyncIterator]() {} },
+  noAssetRes,
+)
+check('没有 zip 附件时拒绝更新', JSON.parse(noAssetRes.box.body).ok === false)
+
+globalThis.fetch = realFetch
 
 const panelRes = fakeResponse()
 byPath['/dsh-star-boot/panel'].handler(fakeRequest('GET', '/dsh-star-boot/panel'), panelRes)

@@ -1,7 +1,8 @@
 {
   "name": "dsh-star-boot",
-  "version": "1.7.2",
-  "description": "星图开机：DSH 启动时的整屏片头——星尘、她的名字、一张状态卡，然后溶解进对话界面。素材、配色、字体、位置全可调。",
+  "version": "1.8.0",
+  "private": true,
+  "description": "星图开机：DSH 启动时的整屏片头——星尘、她的名字、一张状态卡，然后溶解进对话界面。",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -13,18 +14,7 @@
   "files": [
     "lib",
     "assets",
-    "cordis.patch.yml",
-    "README.md",
-    "LICENSE",
-    "NOTICE-assets.md"
-  ],
-  "keywords": [
-    "dsh",
-    "dsh-plugin",
-    "deepseek-harness",
-    "splash",
-    "boot",
-    "星图开机"
+    "cordis.patch.yml"
   ],
   "license": "MIT",
   "engines": {
