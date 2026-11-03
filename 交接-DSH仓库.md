@@ -13,7 +13,7 @@
 | 仓库 | https://github.com/2524034412-boop/DSH （Public，默认分支 `main`） |
 | Release | https://github.com/2524034412-boop/DSH/releases/tag/v1.7.1 |
 | 安装包 | `dsh-star-boot-1.7.1.zip`（7.49 MB，解压后双击 `安装.cmd`） |
-| 仓库内容 | 28 个条目：插件源码、安装脚本、三张截图、五套测试、LICENSE / NOTICE |
+| 仓库内容 | 29 个条目：插件源码、安装脚本、三张截图、五套测试、LICENSE / NOTICE、本交接文档 |
 
 ## 凭据（最重要的一条）
 
@@ -132,8 +132,8 @@ Playwright 默认路径 `C:/Users/25240/.dsh/profiles/desktop/node_modules/playw
 ## 当前状态（2026-11-03）
 
 ```
-远端 main  最新提交 619317b "README 补一段常见问题"
-仓库       28 个条目，README 6.9 KB
+远端 main  与本地一致（本交接文档已随代码入库）
+仓库       29 个条目，README 6.9 KB
 Release    v1.7.1 已发布，asset 7.49 MB
 本地       与远端一致，工作区干净
 ```
