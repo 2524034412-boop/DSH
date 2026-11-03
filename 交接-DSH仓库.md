@@ -18,7 +18,7 @@
 ## 凭据（最重要的一条）
 
 ```
-C:\Users\25240\.dsh\github-token.txt
+<Token 文件>      # 本机：%USERPROFILE%\.dsh\github-token.txt
 ```
 
 - 一行 GitHub Fine-grained PAT，权限：`Contents: Read and write`，覆盖该账号所有仓库
@@ -26,7 +26,7 @@ C:\Users\25240\.dsh\github-token.txt
 - 用法：
 
 ```powershell
-$tok = (Get-Content 'C:\Users\25240\.dsh\github-token.txt' -Raw).Trim()
+$tok = (Get-Content "$env:USERPROFILE\.dsh\github-token.txt" -Raw).Trim()
 ```
 
 **红线**
@@ -40,16 +40,16 @@ $tok = (Get-Content 'C:\Users\25240\.dsh\github-token.txt' -Raw).Trim()
 
 | 路径 | 是什么 |
 |---|---|
-| `D:\DSH\发布\dsh-star-boot-repo` | **源码仓库**（有 git 历史、有 .git）。改代码改这里 |
-| `C:\Users\25240\Desktop\dsh-star-boot-网页上传` | 给网页上传准备的副本，**没有 .git**，不要在这里提交 |
-| `C:\Users\25240\.dsh\plugins\dsh-star-boot` | **DSH 实际加载的插件**。改了这里要重启 DSH 才生效 |
+| `…\dsh-star-boot-repo` | **源码仓库**（有 git 历史、有 .git）。改代码改这里 |
+| `…\dsh-star-boot-网页上传` | 给网页上传准备的副本，**没有 .git**，不要在这里提交 |
+| `…\.dsh\plugins\dsh-star-boot` | **DSH 实际加载的插件**。改了这里要重启 DSH 才生效 |
 
 仓库是「生效目录」的超集：多了安装脚本、README、截图、测试、`.git`。
 
 ## 推送（脚本已备好）
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "D:\DSH\发布\push-DSH.ps1" -Message "改了什么"
+powershell -NoProfile -ExecutionPolicy Bypass -File "<本机的 push-DSH.ps1>" -Message "改了什么"
 ```
 
 - 不带 `-Message` 就只推已有提交
@@ -60,11 +60,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "D:\DSH\发布\push-DSH.ps1"
 
 ### A. 改代码 / 文档
 
-1. 在 `D:\DSH\发布\dsh-star-boot-repo` 里改
+1. 在源码仓库 `…\dsh-star-boot-repo` 里改
 2. 跑测试（见下）
 3. `push-DSH.ps1 -Message "..."`
 4. 用 API 核对：`GET /repos/2524034412-boop/DSH/commits/main`
-5. 要本机也生效：把 `lib/` 覆盖到 `C:\Users\25240\.dsh\plugins\dsh-star-boot\lib\`，然后**重启 DSH**
+5. 要本机也生效：把 `lib/` 覆盖到生效目录（`~/.dsh/plugins/dsh-star-boot/lib/`），然后**重启 DSH**
 
 ### B. 发新版本
 
@@ -93,7 +93,7 @@ Invoke-RestMethod -Uri "https://uploads.github.com/repos/2524034412-boop/DSH/rel
 ## 测试
 
 ```powershell
-$node = "D:\DSH\resources\runtime\node\node.exe"
+$node = "<DSH 安装目录>\resources\runtime\node\node.exe"
 & $node test/host.mjs     # 宿主：注入行、五条路由、Range、上传落盘与清理（59 条）
 & $node test/page.mjs     # 设置页：无 React 桩，验构建不抛
 & $node test/cache.mjs    # 换素材不吃旧缓存（需 Edge + Playwright）
@@ -101,7 +101,7 @@ $node = "D:\DSH\resources\runtime\node\node.exe"
 & $node test/preview.mjs  # 逐帧截图，落在 ~/.dsh/tmp/star-boot-*
 ```
 
-Playwright 默认路径 `C:/Users/25240/.dsh/profiles/desktop/node_modules/playwright`，可用环境变量 `STAR_BOOT_PLAYWRIGHT` 覆盖。
+Playwright 装在 DSH profile 的 `node_modules` 下（`~/.dsh/profiles/desktop/node_modules/playwright`），可用环境变量 `STAR_BOOT_PLAYWRIGHT` 覆盖。
 
 ## 项目事实（改之前必须知道的）
 
