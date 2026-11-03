@@ -225,17 +225,19 @@ if (reduced) {
   await page.waitForTimeout(1400)
   const early = await present()
   console.log('reduced: +1.4s 还在吗 ->', early)
-  await page.waitForTimeout(2600)
+  // 有视频素材时，减少动画也应当等片子播完（默认 10 秒左右），所以退场判定放到 13 秒。
+  const goneAt = process.env.STAR_BOOT_ASSET ? 13000 : 4000
+  await page.waitForTimeout(goneAt - 1400)
   const late = await present()
-  console.log('reduced: +4.0s 已退场吗 ->', late === false)
+  console.log(`reduced: +${String(goneAt / 1000)}s 已退场吗 ->`, late === false)
   if (early !== true) {
     console.log('FAIL: 减少动画时片头 1.4 秒内就没了（应该至少 1.5 秒）')
     process.exitCode = 1
   } else if (late !== false) {
-    console.log('FAIL: 减少动画时片头 4 秒了还没退场')
+    console.log(`FAIL: 减少动画时片头 ${String(goneAt / 1000)} 秒了还没退场`)
     process.exitCode = 1
   } else {
-    console.log('ok: 减少动画时片头停够 2 秒后再退场')
+    console.log('ok: 减少动画时停够，且素材播完才退场')
   }
 }
 
