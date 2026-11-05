@@ -12,6 +12,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createServer } from 'node:http'
 import { apply, firstFrame, isNewerVersion } from '../lib/index.js'
 
 /** 上传测试会真的写文件，所以把 DSH_HOME 指到一个临时目录，别碰本机配置。 */
@@ -312,6 +313,80 @@ check(
   ].every((key) => String(panelRes.box.body).includes('dsh-star-boot:' + key)),
 )
 check('panel 带音效槽', String(panelRes.box.body).includes('audio-path'))
+
+/* ---------- 5. 片头卡里的四盏灯（1.9 与灵犀的那条线） ---------- */
+
+console.log('lights')
+
+/** 起一个只回一段 JSON 的假桥接。端口交给系统挑，避免和真的 3100 撞。 */
+function fakeBridge(payload) {
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(JSON.stringify(payload))
+  })
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port }))
+  })
+}
+
+/** 重新求值一次模块（常量在求值时读 env），拿到一份干净的 apply + 路由表。 */
+async function freshRoutes(tag) {
+  const fresh = await import('../lib/index.js?lights=' + tag)
+  const captured = []
+  fresh.apply({
+    on(event, handler) {
+      if (event === 'webserver/index-inject') handler([])
+    },
+    inject(dependencies, body) {
+      body({
+        effect(fn) {
+          return fn()
+        },
+        webServer: {
+          register(route) {
+            captured.push(route)
+            return () => {}
+          },
+        },
+      })
+    },
+  })
+  return Object.fromEntries(captured.map((route) => [route.path, route]))
+}
+
+const cardUpstream = await fakeBridge({
+  ok: true,
+  role: '独立AI',
+  memories: { total: 7, core: 1 },
+  mood: { emotion: '好奇', intensity: 3 },
+  closest: { name: '某人' },
+})
+const diagUpstream = await fakeBridge({ bridge: true, dsh: true, snowluma: true, onebot: false, qq: true, note: 'OneBot 没起来' })
+
+process.env.STAR_BOOT_BRIDGE = 'http://127.0.0.1:' + String(cardUpstream.port) + '/api/boot/card'
+process.env.STAR_BOOT_DIAG = 'http://127.0.0.1:' + String(diagUpstream.port) + '/diag'
+
+const merged = await freshRoutes('ok')
+const mergedRes = fakeResponse()
+await merged['/dsh-star-boot/card'].handler(fakeRequest('GET', '/dsh-star-boot/card'), mergedRes)
+const mergedCard = JSON.parse(mergedRes.box.body)
+check('卡还是桥接那张', mergedCard.ok === true && mergedCard.role === '独立AI')
+check('多带了一组灯', mergedCard.lights !== undefined && typeof mergedCard.lights === 'object', JSON.stringify(mergedCard))
+check('四盏灯逐个是布尔', mergedCard.lights !== undefined && ['dsh', 'snowluma', 'onebot', 'qq'].every((key) => typeof mergedCard.lights[key] === 'boolean'))
+check('灭的灯照样说实话', mergedCard.lights !== undefined && mergedCard.lights.onebot === false && mergedCard.lights.qq === true)
+check('把桥接的说明也带上了', mergedCard.lights !== undefined && mergedCard.lights.note === 'OneBot 没起来')
+
+// 灯读不到时必须**少一个字段**，而不是四个灰点（客户端据此不画链路那一格）。
+process.env.STAR_BOOT_DIAG = 'http://127.0.0.1:1/diag'
+const degraded = await freshRoutes('nodiag')
+const degradedRes = fakeResponse()
+await degraded['/dsh-star-boot/card'].handler(fakeRequest('GET', '/dsh-star-boot/card'), degradedRes)
+const degradedCard = JSON.parse(degradedRes.box.body)
+check('灯读不到时卡照旧', degradedCard.ok === true && degradedCard.role === '独立AI')
+check('灯读不到时没有 lights 字段', degradedCard.lights === undefined, JSON.stringify(degradedCard))
+
+cardUpstream.server.close()
+diagUpstream.server.close()
 
 console.log(failures.length === 0 ? '\nall good' : `\n${String(failures.length)} failed`)
 process.exitCode = failures.length === 0 ? 0 : 1
