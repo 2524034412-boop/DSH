@@ -1,168 +1,238 @@
-# 星图开机 · dsh-star-boot
+# dsh-star-boot · 星图开机
 
-DeepSeek Harness 启动时的一整屏片头：星尘 → 她的名字 → 状态卡 → 接入确认 → 溶解进对话界面。
+DSH 启动时的整屏片头：星尘 → 她的名字 → 一张状态卡 → 「接入确认」逐条点亮 → 溶解进对话界面。
 
-素材自己换，颜色、字体、位置、节奏全都能调。
-
-> 这个仓库放 DSH 相关的插件和思路，大部分由 AI 生成，有 bug 会修。
-> 第一个插件就是下面这个「星图开机」。
-
-![开机画面](docs/shot-main.png)
-
-## 它长什么样
+参考 `dsh-550c-boot` 的机制（首帧遮盖），动画完全自己写，不搬它的素材和代码。
 
 ```
-0.0s  黑场 + 星点浮现
-0.5s  细线 + 眉标
-0.8s  名字逐字点亮
-1.0s  素材从 1.07 缩放到 1、浮起
-1.2s  打字机一句 + 状态卡（记忆 / 心情 / 压力 / 最在意）
-2.6s  过曝一闪 → 接入确认四条逐条点亮（01 身份 … 04 通道）
-      停住等人：点击或 Enter 进入（2.6 秒没人动就自己进）
-      素材跟播开着时，视频播完才进场（最多 15 秒）
-      → 两段式溶解：内容先淡、背景后淡
+0.0s  ┌ 黑场 + 星点缓慢浮现
+0.5s  │ 细线 + 眉标：DEEPSEEK HARNESS · 星图
+0.8s  │ 「小肥鱼」逐字点亮（模糊 → 清晰）
+1.0s  │ 立绘从 1.07 缩放到 1，浮起
+1.2s  │ 打字机："> 记忆 106 条，星图已接上"
+1.6s  │ 状态卡浮起：记忆 / 心情 / 压力 / 最在意 / 链路（四盏灯，1.9）
+2.4s  │ 一闪（过曝洗白）→ 片头退场，立绘压暗
+2.9s  │ 接入确认：01 身份 / 02 记忆 / 03 关系 / 04 通道 / 05 链路，逐条点亮
+4.5s  │ 停住等人：点击 或 Enter 进入（2.6 秒没人动就自动进）
+      └ 两段式溶解：内容先淡，背景后淡 → DSH
 ```
 
-Esc 或点击随时跳过。
+Esc 或点击跳过。`prefers-reduced-motion` 下退化成 0.6 秒的静态卡。
 
-## 装之前
+## 为什么要有宿主那一半
 
-- Windows（脚本只写了 Windows；macOS / Linux 看下面「手动安装」）
-- 已经装好 DSH 桌面版，并且**至少启动过一次**（`%USERPROFILE%\.dsh` 得存在）
+DSH 的启动卡（`[data-dsh-boot]`，"Loading plugins…"）由 shell 在客户端插件被求值**之前**就画好了。550C 的作者在自己的机器上量过：卡 67ms 出现、插件 338ms 才求值、卡 517ms 才被销毁。所以任何「先在插件里画点什么」的做法都必然慢半拍。
 
-## 安装
+唯一比 shell 更早的东西是**送达的文档本身**：`webserver/index-inject` 允许插件往 `index.html` 的 `<head>` 里塞行。这里塞的是
 
-### 方式一：下载 Release 的 zip（最省事）
+- 一行 `style`：`html.star-first::before` 把整页涂成 `#04070f`；
+- 一行同步 `script`：加 class、暴露 `window.__dshStarFirstFrame.end()`。
 
-1. 到 Releases 下载 `dsh-star-boot-<版本>.zip`
-2. 解压，双击 **`安装.cmd`**
-3. 重启 DSH
+于是启动卡从来没出现过。客户端的片头在自己的 shadow root 上屏的**同一个 task** 里调 `end()`，一次绘制，没有中间态。
 
-脚本会：找到 DSH 数据目录 → 拷插件到 `<DSH 数据目录>\plugins\dsh-star-boot` → 在 profile 的 `package.json` 里加 dependency 与 bundle 两处声明 → 建 `node_modules` 链接 → 校验没有「声明了却装不起来」的条目。任何一步失败都会回滚，不会留一个让 DSH 打不开窗口的清单。
+兜底：脚本盯 `[data-dsh-boot]`（shell 撤卡时收遮盖）并在 12 秒后无条件让开；客户端还有 20 秒保险。窗口如果是最小化启动、rAF 被节流，定时器照样把动画踢起来。
 
-### 方式二：克隆仓库后跑脚本
+## 状态卡的数据
 
-```powershell
-git clone https://github.com/<你>/dsh-star-boot.git
-cd dsh-star-boot
-powershell -ExecutionPolicy Bypass -File install.ps1
-```
-
-### 方式三：手动
-
-1. 把整个仓库拷到 `<DSH 数据目录>\plugins\dsh-star-boot`
-2. profile 的 `package.json`（`<DSH 数据目录>\profiles\<profile>\package.json`）里加两处：
-   ```json
-   { "dependencies": { "dsh-star-boot": "link:../../../plugins/dsh-star-boot" },
-     "dsh": { "profile": { "bundles": ["dsh-star-boot"] } } }
-   ```
-3. 在 profile 的 `node_modules` 里建指向插件目录的链接（junction / symlink）
-4. 重启 DSH
-
-> 装错了会让 DSH 下次启动打不开窗口。装之前先把 profile 的 `package.json` 备份一份——脚本每次也会自动备份。
-
-## 装完怎么改
-
-**设置 → 左侧「星图开机」**（分组：开关 / 外观 / 文案 / 素材），或者同源控制页：
+`lib/index.js` 去问 qq-bridge：
 
 ```
-http://127.0.0.1:<DSH 端口>/dsh-star-boot/panel
+GET http://127.0.0.1:3100/api/boot/card
+{ ok, role, mood:{emotion,intensity}, moodLong, stress,
+  memories:{total,core,long,short}, people, closest:{name,score} }
 ```
 
-控制页比设置页多两个按钮：**导出配置 / 导入配置**（一段 JSON，可以贴给别人，也能存起来当皮肤）。
+页面不跨域：它只访问同源的 `/dsh-star-boot/card`，由宿主进程代取。桥接没开、没起来、或者这台机器根本没装桥接，都得到 `ok:false`，动画自动退化成「简洁」——只有片头，没有卡、没有授权页，也没有假数字。
 
-![控制页](docs/panel.png)
+### 1.9 起多了一格「链路」
 
-### 换素材
+同一个 `/dsh-star-boot/card` 里会多一个 `lights`（宿主顺手问一句 `http://127.0.0.1:3100/diag`）：
 
-在「素材」组里点 **选择文件…**，直接挑本机的图片或视频；也可以把文件拖进控制页。选完自动导入（拷一份到 `<DSH 数据目录>\star-boot-assets`），之后片头读的是那份拷贝。换掉的旧拷贝会自动清理，不会越堆越多。
+```
+lights: { dsh, snowluma, onebot, qq, note }   // 四盏灯 + 一句「哪盏为什么灭」
+```
 
-留空 = 回到随包素材。
+片头的状态卡就在「最在意」右边多一格四盏灯，授权页多一行「05 链路」。
+**读不到就没有 `lights` 这个字段**，客户端不画那一格——四盏灭灯的假象比没有更糟。
 
-### 想调的东西
+授权页那行说清楚**是哪一盏**没通（例如「DSH 未通」「OneBot · QQ 未通」），只丢一句「待修」等于让人自己去猜。
+
+为什么是问桥接而不是问灵犀插件：片头比任何 DSH 插件都早，不能依赖别人还在跑。两条环境变量可以改指向（测试用）：
+`STAR_BOOT_BRIDGE`、`STAR_BOOT_DIAG`。
+
+## 和灵犀（QQ 桥接）连上了
+
+两个插件**互相不认识对方的代码**，只认槽位名和接口：
+
+| 方向 | 做法 |
+| --- | --- |
+| 星图开机 → 灵犀页 | `ctx.slots.inject('settings.qq-bridge.card', …)` 注册一张卡：片头模式 / 背景 / 此刻会显示什么 / 四盏灯 / **预览片头** / 打开片头设置 |
+| 灵犀页 → 星图开机 | 上面那格「链路」，数据来自桥接 `/diag` |
+
+所以装了两个插件之后：设置 → 灵犀 · QQ 桥接 → **系统** 标签最下面是片头的遥控器；
+开机片头本身能看出四盏灯亮了几盏。灵犀没装、槽位不存在时，`inject` 不回调，等于本插件不知道它存在；
+反过来也一样——**谁缺席都不报错**。
+
+## 素材
+
+两样东西可以由用户换成任意本机文件。**换法有两种**：
+
+1. 点「选择文件…」——弹出系统文件对话框，选完直接导入（页面把字节交给宿主，宿主拷一份进 `<DSH 数据目录>\star-boot-assets`，再把那份的绝对路径写进配置）；
+2. 直接填绝对路径——适合文件很大、或者不想多存一份的时候。
+
+拖进控制页也行，按扩展名自动判是背景还是音效。
+
+```
+GET  /dsh-star-boot/asset?slot=bg     背景：图片或视频，没配就用随包 hero.webp
+GET  /dsh-star-boot/asset?slot=audio  音效：没配就 404（不拿默认音骗人）
+GET  /dsh-star-boot/config            两个槽位现在指向哪、能不能用、为什么不能用
+POST /dsh-star-boot/config            { slot: "bg"|"audio", path: "C:\\..." }，空串恢复默认
+POST /dsh-star-boot/upload            原始字节；头里带 x-star-slot / x-star-name
+```
+
+路径必须是绝对路径，文件要存在、大小在限内、扩展名认识；否则 400 并说明原因（`reason: missing / too-large / unsupported-type`）。上限：背景 64MB，音效 24MB。
+
+上传会**替换并清理**：换掉的那份如果本来就是拷贝进 `star-boot-assets` 的，会被删掉，不会越堆越多；用户自己指定的外部文件永远不动。
+
+> 为什么不是「记住你选的本机路径」：浏览器里 `<input type=file>` 只给得出 `File` 对象，拿不到绝对路径；Electron 的 `webUtils.getPathForFile` 又需要 preload 暴露。收字节是唯一在所有 DSH 版本上都成立的做法。
+
+## 设置
+
+两个入口，都是 DSH 页面里的原生 UI：
+
+1. **设置 → 左侧导航「星图开机」**（自己的一页，控件齐全）
+2. **设置 → 通用 → 「星图开机」**（只放模式 + 预览的一行）
+
+> 2026-11-02：profile 里 `- id: ui-settings` 原本是 `enabled: false`，整页设置被关掉，
+> 所以两个入口都无处显示（550C 的设置行同理，从来没出现过）。已改成 `true`。
 
 | 控件 | 作用 |
 |---|---|
-| 模式 | 关闭 / 简洁（只有片头）/ 状态卡 |
-| 节奏 | 快 0.72× / 标准 / 慢 1.35×（只缩放等待，不动交互） |
-| 授权页 / 立体字 / 文字叠加 / 音效 / 素材跟播 | 各自的开关 |
-| 配色 / 主色 | 四套预设，或任意 `#rrggbb` 覆盖强调色 |
-| 字体 / 标题大小 / 立体字大小 / 字透明 | 那两行字长什么样 |
-| 字样式 | 玻璃（默认）/ 描边 / 挤出 |
-| 素材适配 / 位置 / 压暗 / 遮罩 / 模糊 | 素材怎么摆、多亮、糊不糊 |
-| 面板位置 | 左下 / 左中 / 左上 / 右下 / 右中 / 右上 |
-| 文案（7 条） | 名字、眉标、两句打字行、3D 词、两行小提示，留空即隐藏 |
+| 关闭 / 简洁 / 状态卡 | 三档。**简洁**＝只有片头；**关闭**＝DSH 原样启动 |
+| 预览 | 不用重启，立即重放一遍（用当前配色/节奏/授权页设置） |
+| 配色 | 星蓝 / 暖光 / 靛紫 / 素白 —— 四组 CSS 变量，只换色不换版式 |
+| 主色 | 任意 `#rrggbb`，覆盖上面四套的强调色；「用配色自带」清掉 |
+| 字体 | 默认 / 衬线 / 等宽 / 圆体 —— 只作用于片头那个大字 |
+| 标题大小 | 70–140% |
+| 立体字大小 | 60–160% |
+| 节奏 | 快 0.72× / 标准 1× / 慢 1.35× —— 只缩放"等待"，交互和淡出不变 |
+| 授权页 | 开 / 关 |
+| 立体字 | 右侧那个词开 / 关（词本身在「文案 · 立体字」里改） |
+| 字样式 | **玻璃**（细体大写 + 渐变 + 慢浮，字下垫一层柔光）/ **描边**（只剩一条发丝线）/ **挤出**（原来那套 10 层 3D，深色底才好看） |
+| 字透明 | 0–100%，默认 60 |
+| 文字叠加 | 名字 / 眉标 / 打字行 / 状态卡是否压在素材上；关掉后只剩画面（视频背景时尤其有用） |
+| 音效 | 开 / 关。默认**关**；开的时候才会去读音频槽 |
+| 素材跟播 | 开 / 关。默认**开**：背景是视频时，等它完整播过一遍再进场（最多 15 秒）。判定靠「最远播放时间」而不是 `ended`，所以短片在片头演完前就播过一圈时立刻走；视频没在自动播放或卡住超过 1.5 秒也会立刻走，不会定在某一帧上干等 |
+| 音量 | 0–100 |
+| 素材 · 背景 | 点「选择文件…」挑（任意本机图片 webp/png/jpg/avif/gif 或视频 mp4/webm/m4v），也可以填绝对路径；留空用随包 hero.webp |
+| 素材 · 音效 | 点「选择文件…」挑（mp3/wav/ogg/m4a/aac/flac），也可以填绝对路径；留空＝没有声音 |
+| 素材适配 | 铺满（cover）/ 完整（contain） |
+| 素材位置 | 九宫格 object-position |
+| 压暗 | 0–100，素材那层的不透明度（想让画面更亮就往上调） |
+| 遮罩 | 0–100，文字底下那层暗角。默认 80；调到 0 就是完全不加暗，画面最清楚 |
+| 面板位置 | 左下 / 左中 / 左上 / 右下 / 右中 / 右上——名字、状态卡、授权页一起挪 |
+| 模糊 | 0–20px（模糊时自动放大一点，免得露边） |
+| 文案 · 名字 | 片头逐字点亮的名字，授权页「01 身份」也用这个（默认 小肥鱼） |
+| 文案 · 眉标 | 名字上方那行小字（默认 DEEPSEEK HARNESS · 星图） |
+| 文案 · 接上 / 没接上 | 打字机那两句；`{mem}` 会替换成记忆条数 |
+| 文案 · 立体字 | 右侧转的那个词，留空整块不建节点 |
+| 文案 · 跳过提示 / 授权提示 | 底部两行小字，留空即隐藏 |
+| 恢复默认文案 | 一键还原上面七项 |
 
-默认值就是仓库里这套：背景用随包的 `assets/default-bg.mp4`，压暗 85、遮罩 60、面板左下、玻璃字、跟播开。
+设置页万一又不可用，还有一张同源控制页：`http://127.0.0.1:<DSH端口>/dsh-star-boot/panel`——同样的全套控件，外加「导出配置 / 导入配置」两个按钮（一段 JSON，可以贴给别人，也可以存起来当皮肤）。
+
+存储：模式/配色/节奏/授权页/外观/文案都在 `localStorage`（键名 `dsh-star-boot:*`，文案是一整个 `dsh-star-boot:text` 对象），素材路径在 `$DSH_HOME/star-boot.json`：
+
+```json
+{ "version": 2, "assets": { "bg": "D:\\art\\a.mp4", "audio": "D:\\art\\open.mp3" } }
+```
+
+旧的单素材格式 `{ "asset": "..." }` 仍然认，会被当成背景槽。
+
+**缓存这个坑（1.4.2 修）**：素材对所有槽位是同一个 URL，浏览器按 `max-age` 把上一份缓存住——换完视频再预览，看到的还是那张旧图。现在两头都堵了：客户端每次上屏给地址加一次性参数 `?v=<时间戳>`，宿主那边也只允许协商缓存（`no-cache` + ETag），不再发一小时的长缓存。视频还额外支持 `Range`，因为 mp4 的 `moov` 常贴在文件末尾，播放器要跳到尾部才能起播。
+
+**和 550C 共存**：装上本插件后，它会把 550C 的片头压住（启动时把 `dsh-550c-boot:mode` 写成 `off`，并记下原来的值；在这个插件里选「关闭」时再还原）。两个插件都装着，谁在播由这个开关决定。
+
+## 逃生口
+
+- 本次跳过、不改设置：地址后加 `?star=0`
+- 彻底停用：profile 的 `dsh.profile.bundles` 里删掉 `dsh-star-boot`，或设置行里选「关闭」
 
 ## 文件
 
 ```
-lib/index.js        宿主：首帧遮盖、状态卡代理、素材双槽 + 上传、同源控制页
-lib/client.js       浏览器：动画、授权页、外观变量、设置页
-assets/hero.webp    随包图片素材（视频被删掉时的兜底）
-assets/default-bg.mp4  随包视频素材
-docs/               截图
-install.ps1 / 安装.cmd     安装
-uninstall.ps1 / 卸载.cmd   卸载（-Purge 连目录一起删）
-patch.cjs           改 profile 清单的那一小段，带孤儿校验与回滚
-test/               五套测试
+lib/index.js      宿主：首帧遮盖、状态卡代理、素材双槽路由 + 上传、同源控制页
+lib/client.js     浏览器：动画、授权页、外观变量、设置页
+assets/hero.webp  随包素材（默认背景）
+test/host.mjs     宿主侧取证：注入行、六条路由、304、Range、坏路径被拒、上传落盘与清理、四盏灯合并/降级
+test/page.mjs     设置页取证：无 React 桩渲染三个入口（通用行 / 独立页 / 灵犀扩展卡），验构建不抛 + 控件齐全
+test/panel.mjs    端到端：真 Edge 点「选择文件…」，验落盘、/asset、换新清旧
+test/cache.mjs    换素材不吃旧缓存：长缓存服务器 + 同一上下文换文件后刷新
+test/preview.mjs  真浏览器取证：逐帧截图
 ```
 
 ## 测试
 
 ```powershell
-$node = "D:\DSH\resources\runtime\node\node.exe"   # 或任意 Node ≥ 20
-& $node test/host.mjs      # 宿主：注入行、五条路由、Range、上传落盘与清理
-& $node test/page.mjs      # 设置页：无 React 桩渲染两个入口，验构建不抛
-& $node test/panel.mjs     # 端到端：真 Edge 点「选择文件…」→ 落盘 → 服务新图
-& $node test/cache.mjs     # 换素材不吃旧缓存
-& $node test/preview.mjs   # 逐帧截图
+$node = "D:\DSH\resources\runtime\node\node.exe"
+& $node test/host.mjs     # 宿主那一半（67 项，含 1.9 的四盏灯）
+& $node test/page.mjs     # 设置页这一半（23 项，不用真 React）
+& $node test/panel.mjs    # 端到端：选文件 → 落盘 → 服务新图
+& $node test/cache.mjs    # 换素材后刷新：必须拿新视频，不许吃旧缓存
+
+# 逐帧截图（默认落在 .dsh/tmp/star-boot-*）
+& $node test/preview.mjs
+$env:STAR_BOOT_SCHEME='warm';  & $node test/preview.mjs   # 配色
+$env:STAR_BOOT_PACE='fast';    & $node test/preview.mjs   # 节奏
+$env:STAR_BOOT_NO_CARD='1';    & $node test/preview.mjs   # 桥接不可用
+$env:STAR_BOOT_PRESS='enter';  & $node test/preview.mjs   # 验"点击/Enter 推进"
+
+# 任意一组设置：JSON，键可省略 dsh-star-boot: 前缀
+$env:STAR_BOOT_STORE='{"accent":"#ff9a6c","blur":6,"dim":72,"fit":"contain","font":"serif","titleScale":130}'
+$env:STAR_BOOT_TEXT='{"name":"测试","mark":"小肥鱼","hint":""}'
+$env:STAR_BOOT_AUDIO='D:\music\open.wav'                  # 顺带验音效槽
+$env:STAR_BOOT_TAG='custom';   & $node test/preview.mjs
 ```
 
-`preview.mjs` / `panel.mjs` / `cache.mjs` 需要本机有 Playwright + Edge。
+## 踩过的坑（2026-11-02 21:27，一次崩溃 + profile 被清）
 
-## 已知限制
+第一次重启后 DSH 直接崩，crash 日志写的是：
 
-- 安装脚本只覆盖 Windows；macOS / Linux 按「手动」那三步来。
-- 「素材跟播」最多等 15 秒，更长的片子还是会被切。
-- 音效不一定响：浏览器/Electron 的自动播放策略可能拒掉没有用户手势的 `play()`，这时它安静着，不报错。
-- 视频依赖宿主支持 `Range`（1.4.2 起已实现）；用老宿主时 mp4 的 `moov` 在尾部可能起播不了。
+```
+Error: web boot: 1 entry did not activate
+dsh-star-boot: failed
+```
 
-## 素材授权
+后果比崩溃更糟：DSH 随后把 profile 清单重置成默认值——`dsh.profile.bundles` 只剩
+base + web-app，`cordis.patch.yml` 里的 MCP / 预设 / bili / 550C 配置整段消失。
 
-见 [NOTICE-assets.md](NOTICE-assets.md)。**代码是 MIT，素材不跟着 MIT 走**：随包的 `assets/default-bg.mp4` 和 `assets/hero.webp` 是作者自己的素材，随本仓库分发。你要拿去用请注明出处，或者直接换成自己的——删掉视频会自动退回 `assets/hero.webp`。
+根因三条，现在都封住了：
 
-## 更新
+1. **浏览器工件的 id 必须等于包名**。写成条目 id（`star-boot`）的话装载器按名字找不到 factory。
+2. **`ctx.slots.register` 在槽位未声明时会抛 `SlotOwnershipError`**。本机 profile 里
+   `@deepseek-ai/dsh-client-ui-settings` 是 `enabled: false`，所以
+   `settings.general.item` 根本不存在——裸调 register 等于每次开机必崩。
+   现在只走 `ctx.slots.inject`（槽位存在才回调），并整段 try/catch。
+3. 宿主侧每条路由注册也各自兜住：一个路由注册失败不该让条目「未激活」。
 
-设置 → 星图开机 → 开场 → 最下面「更新」那张卡：
+不变量：**这个插件在任何情况下都不许让条目未激活。** 片头可以不播，DSH 必须能开。
 
-- **检查更新**：去 GitHub 问最新版本，和本地比版本号（按数字比，`1.7.10` 比 `1.7.9` 新）
-- 有新版本时会出现 **一键更新到 vX.Y.Z**：下载 zip → 校验包名和版本 → 把旧目录改名备份成 `dsh-star-boot.bak-<旧版本>` → 放进新文件
-- 更新完**必须重启 DSH**：宿主那一半在内存里，不重启还是旧代码
-- 任何一步失败都会回滚，旧版本原样还在
+## 设置界面被禁用时的开关
 
-它不会偷偷替换你的文件——只有你点那个按钮才会动。控制页 `/dsh-star-boot/panel` 底部的「更新」也有一模一样的两个按钮。
+本机把设置界面关了（`ui-settings: enabled: false`），设置行显示不出来。所以宿主另外
+提供了一张同源控制页：
 
-## 常见问题
+```
+http://127.0.0.1:<DSH端口>/dsh-star-boot/panel
+```
 
-**装完重启，没看到片头？**
-先确认是真重启（进程列表里没有 `DeepSeek Harness` 再打开），刷新页面不够——宿主那一半只在启动时加载。再看 profile 的 `package.json` 里 `dsh.profile.bundles` 有没有 `dsh-star-boot`；没有就重跑一次 `安装.cmd`。
+它和 DSH 同源，直接写 localStorage，改完下次启动生效。
 
-**片头一闪而过，或者干脆没有？**
-设置 → 星图开机 → 模式是不是「关闭」；地址栏后加过 `?star=0` 的话这一次也会跳过。
+## 出事了怎么恢复
 
-如果只闪零点几秒，多半是系统开了「减少动画」（Windows：设置 → 辅助功能 → 视觉效果 → 动画效果；macOS：辅助功能 → 显示 → 减弱动态效果）。这条路会把动画压成静态，1.7.2 起即使这样也停 2 秒，看得清再走。
+```powershell
+powershell -ExecutionPolicy Bypass -File "D:\DSH\恢复profile.ps1"
+```
 
-**背景视频不播 / 卡住？**
-宿主需要支持 `Range`（1.4.2 起已实现）。老版本或自己改过的宿主，mp4 的 `moov` 在文件尾部时可能起播不了。也可以先把「素材跟播」关掉试一次——关掉后片头固定按自己的节奏走。
+把 `package.json` 与 `cordis.patch.yml` 恢复到「没有本插件、其它一切正常」的版本。
 
-**改了素材/颜色，但没变化？**
-素材和外观都是浏览器那一半，刷新页面即可；只有宿主代码（`lib/index.js`）改动需要重启 DSH。
-
-**想彻底关掉？**
-设置 → 星图开机 → 模式选「关闭」，或者跑 `卸载.cmd` 把加载声明去掉。
-
-## License
-
-MIT，见 [LICENSE](LICENSE)。
