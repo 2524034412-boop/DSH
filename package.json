@@ -1,6 +1,6 @@
 {
   "name": "dsh-star-boot",
-  "version": "1.9.3",
+  "version": "1.9.4",
   "private": true,
   "dshLabel": "星图开机",
   "description": "星图开机：DSH 启动时的整屏片头——星尘、她的名字、一张状态卡，然后溶解进对话界面。",
