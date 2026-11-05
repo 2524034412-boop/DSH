@@ -99,7 +99,7 @@ try {
 } catch (error) {
   check('apply 不抛', false, String((error && error.message) || error))
 }
-check('登记了两个入口', captured.length === 2, String(captured.length))
+check('登记了三个入口（通用行 / 独立页 / 灵犀扩展卡）', captured.length === 3, String(captured.length))
 check(
   '一个是设置行、一个是独立页',
   captured.some((item) => item.option.name === 'settings.general.item') &&
@@ -135,6 +135,7 @@ const walk = (node, visit) => {
 for (const item of captured) {
   const label = `${item.option.name}:${String(item.option.id)}`
   const isPage = item.option.name === 'settings.section'
+  const isBridgeCard = item.option.name === 'settings.qq-bridge.card'
   let tree = null
   try {
     tree = item.component()
@@ -158,6 +159,12 @@ for (const item of captured) {
     check(`${label} 文案齐全`, ['名字', '眉标', '立体字', '音效'].every((word) => text.includes(word)))
     check(`${label} 有导入按钮`, text.includes('选择文件'))
     check(`${label} 有更新入口`, text.includes('检查更新') && text.includes('版本'))
+  } else if (isBridgeCard) {
+    // 插进灵犀页的那张卡：只说清楚片头现在什么样 + 两个按钮，不重复整套控件。
+    check(`${label} 讲清片头状态`, ['片头模式', '背景', '链路'].every((word) => text.includes(word)))
+    check(`${label} 有预览按钮`, text.includes('预览片头'))
+    check(`${label} 有设置入口`, text.includes('打开片头设置'))
+    check(`${label} 不塞全身控件`, files === 0 && sliders === 0, `file=${String(files)} range=${String(sliders)}`)
   } else {
     // 「通用」里那一行只放模式 + 素材 + 预览，不重复整套控件。
     check(`${label} 有模式开关`, ['关闭', '简洁', '状态卡'].every((word) => text.includes(word)))
@@ -167,3 +174,4 @@ for (const item of captured) {
 
 console.log(failures.length === 0 ? '\nall good' : `\n${String(failures.length)} failed`)
 process.exitCode = failures.length === 0 ? 0 : 1
+
