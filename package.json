@@ -17,7 +17,8 @@
     "lib",
     "assets",
     "cordis.patch.yml",
-    "locale"
+    "locale",
+    "CHANGELOG.md"
   ],
   "license": "MIT",
   "engines": {
