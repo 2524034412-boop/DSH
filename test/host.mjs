@@ -385,6 +385,32 @@ const degradedCard = JSON.parse(degradedRes.box.body)
 check('灯读不到时卡照旧', degradedCard.ok === true && degradedCard.role === '独立AI')
 check('灯读不到时没有 lights 字段', degradedCard.lights === undefined, JSON.stringify(degradedCard))
 
+/* ---------- 6. 灯慢的时候不许拖住卡（开机的 420ms 窗口） ---------- */
+
+console.log('lights budget')
+
+// 一个「回得特别慢」的 /diag：模拟 tasklist 卡住。卡必须照常按时出来。
+const slowDiag = createServer((req, res) => {
+  setTimeout(() => {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(JSON.stringify({ dsh: true, snowluma: true, onebot: true, qq: true }))
+  }, 3000)
+})
+await new Promise((resolve) => slowDiag.listen(0, '127.0.0.1', resolve))
+
+process.env.STAR_BOOT_DIAG = 'http://127.0.0.1:' + String(slowDiag.address().port) + '/diag'
+const slow = await freshRoutes('slowdiag')
+const started = Date.now()
+const slowRes = fakeResponse()
+await slow['/dsh-star-boot/card'].handler(fakeRequest('GET', '/dsh-star-boot/card'), slowRes)
+const elapsed = Date.now() - started
+const slowCard = JSON.parse(slowRes.box.body)
+check('慢灯下卡照样出来了', slowCard.ok === true && slowCard.role === '独立AI')
+check('慢灯没有拖住卡（< 900ms）', elapsed < 900, elapsed + 'ms')
+check('慢灯时先不画灯，而不是画假的', slowCard.lights === undefined, JSON.stringify(slowCard.lights))
+
+slowDiag.close()
+
 cardUpstream.server.close()
 diagUpstream.server.close()
 
